@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import shutil
 import sys
 from pathlib import Path
 from typing import Any
@@ -68,8 +69,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--run-name", default="model_a_yolov8n_pc_export_run_001")
     parser.add_argument("--skip-train", action="store_true")
     parser.add_argument("--export-onnx", action="store_true")
-    parser.add_argument("--export-tflite", action="store_true")
-    parser.add_argument("--export-int8", action="store_true")
+    parser.add_argument("--export-nms-onnx", action="store_true")
     return parser.parse_args()
 
 
@@ -85,7 +85,7 @@ def main() -> int:
         print(str(exc), file=sys.stderr)
         return 2
 
-    project_dir = Path("runs") / args.run_name
+    project_dir = (Path.cwd() / "runs" / args.run_name).resolve()
     model = YOLO(args.weights)
     active_weights = Path(args.weights)
 
@@ -101,7 +101,12 @@ def main() -> int:
             exist_ok=True,
             workers=0,
         )
-        best = Path(train_result.save_dir) / "weights" / "best.pt"
+        save_dir = getattr(train_result, "save_dir", None)
+        if save_dir is None and getattr(model, "trainer", None) is not None:
+            save_dir = getattr(model.trainer, "save_dir", None)
+        if save_dir is None:
+            raise RuntimeError("Ultralytics did not expose train save_dir; cannot locate best.pt")
+        best = Path(save_dir) / "weights" / "best.pt"
         if best.exists():
             active_weights = best
             model = YOLO(str(active_weights))
@@ -119,19 +124,17 @@ def main() -> int:
     )
 
     exported: dict[str, dict[str, str]] = {}
-    export_kwargs = {"imgsz": args.imgsz, "nms": False}
-
     if args.export_onnx:
-        onnx_path = Path(model.export(format="onnx", **export_kwargs))
-        exported["onnx"] = {"path": str(onnx_path), "sha256": sha256_file(onnx_path)}
+        onnx_path = Path(model.export(format="onnx", imgsz=args.imgsz, nms=False))
+        raw_path = onnx_path.with_name(f"{onnx_path.stem}_raw.onnx")
+        shutil.copyfile(onnx_path, raw_path)
+        exported["onnx_raw"] = {"path": str(raw_path), "sha256": sha256_file(raw_path)}
 
-    if args.export_tflite:
-        tflite_path = Path(model.export(format="tflite", **export_kwargs))
-        exported["tflite"] = {"path": str(tflite_path), "sha256": sha256_file(tflite_path)}
-
-    if args.export_int8:
-        int8_path = Path(model.export(format="tflite", int8=True, data=args.data, **export_kwargs))
-        exported["tflite_int8"] = {"path": str(int8_path), "sha256": sha256_file(int8_path)}
+    if args.export_nms_onnx:
+        onnx_path = Path(model.export(format="onnx", imgsz=args.imgsz, nms=True))
+        nms_path = onnx_path.with_name(f"{onnx_path.stem}_nms.onnx")
+        shutil.copyfile(onnx_path, nms_path)
+        exported["onnx_nms"] = {"path": str(nms_path), "sha256": sha256_file(nms_path)}
 
     report = {
         "weights": str(active_weights),

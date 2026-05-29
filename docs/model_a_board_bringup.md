@@ -1,6 +1,6 @@
 # Model A YOLOv8n Bring-Up
 
-目标：先用本项目模型 A 的训练基础模型 `yolov8n.pt` 跑通 PC 侧检测链路，再逐步推进到 INT8/RUHMI/RA8P1 板端。
+目标：先用本项目模型 A 的训练基础模型 `yolov8n.pt` 跑通本机 PC 侧检测链路，训练侧只交付 `.pt` 和/或 `.onnx`；量化、转换和板端集成由另一台板侧开发电脑的 e2 studio / RA 工具链完成。
 
 当前状态：PC 侧 smoke training/export 待开始实测。
 
@@ -15,27 +15,26 @@ yolov8n.pt
 -> 416x416 smoke training
 -> predict on one image
 -> export ONNX
--> export TFLite / INT8 candidate if dependencies allow
 -> inspect raw output tensor and Python post-processing
 -> map bbox back to VGA 640x480 coordinates
 -> record artifacts, hashes, output shape and problems
 ```
 
-RA8P1/RUHMI/上板是下一阶段。Renesas 官方示例只作为后续工程集成参考，不作为模型 A 的基础模型。
+RA8P1/e2 studio 转换和上板是下一阶段。Renesas 官方示例只作为后续工程集成参考，不作为模型 A 的基础模型。
 
 ## What Counts As Success
 
 一次有效的 PC 侧 YOLOv8n 基线实验至少满足：
 
-1. 能明确记录 Python、Ultralytics、Torch、ONNX/TFLite 相关版本。
+1. 能明确记录 Python、Ultralytics、Torch、ONNX/ONNX Runtime 相关版本。
 2. 能成功加载 `yolov8n.pt`。
 3. 能以 `imgsz=416` 完成 1 epoch 或等价 smoke training。
 4. 能对一张测试图执行 predict 并输出检测框。
 5. 能成功导出 ONNX。
-6. 能尝试导出 TFLite/INT8；失败时记录依赖版本和失败点。
-7. 能记录原始输出 tensor shape、NMS/阈值策略和输出样例。
-8. 能把检测框统一整理为 `semantic_det_raw_t` 风格结果。
-9. 能验证 `416x416` letterbox 坐标反变换回 VGA `640x480` 坐标。
+6. 能记录原始输出 tensor shape、NMS/阈值策略和输出样例。
+7. 能把检测框统一整理为 `semantic_det_raw_t` 风格结果。
+8. 能验证 `416x416` letterbox 坐标反变换回 VGA `640x480` 坐标。
+9. 能明确给出板侧 handoff artifact：优先 `.onnx`，保留 `.pt` 作为训练基线备份。
 
 ## Current Project Input Domain
 
@@ -53,15 +52,15 @@ PC 侧首跑可以使用普通图片文件作为输入，但所有坐标检查�
 ## Recommended Step Order
 
 1. 建立 Python 虚拟环境。
-2. 安装 `ultralytics`、`onnx`、`onnxruntime` 和 TFLite 导出所需依赖。
+2. 安装 `ultralytics`、`onnx`、`onnxruntime`。
 3. 加载 `yolov8n.pt`。
 4. 用 `coco8.yaml` 或等价最小数据集做 `imgsz=416` smoke training。
 5. 对一张测试图做 predict，保存预测图和 JSON 摘要。
 6. 导出 ONNX，记录路径和 hash。
-7. 尝试导出 TFLite / INT8，成功则记录路径和 hash，失败则记录错误。
+7. 可选导出 NMS ONNX 作为 PC 侧输出对照；板侧优先评估 raw ONNX。
 8. 记录 raw tensor shape、score/NMS 策略。
 9. 用 `scripts/model_a_letterbox_demo.py` 验证 bbox 反变换规则。
-10. 再进入 RUHMI 编译和板端接入计划。
+10. 把 `.pt` / `.onnx` 交给板侧电脑，在 e2 studio / RA 工具链中执行量化、转换和集成。
 
 ## Information To Capture
 
@@ -74,9 +73,9 @@ PC 侧首跑可以使用普通图片文件作为输入，但所有坐标检查�
 | Training dataset | `coco8.yaml` / TBD |
 | Input size | 416x416 RGB |
 | Test image | 640x480 preferred |
-| ONNX artifact | TBD |
-| TFLite artifact | TBD |
-| INT8 artifact | TBD |
+| PT artifact | TBD |
+| raw ONNX artifact | TBD |
+| NMS ONNX artifact | optional PC reference |
 | Raw output tensor shape | TBD |
 | NMS/conf/IoU parameters | TBD |
 | bbox reverse transform check | TBD |
@@ -90,7 +89,8 @@ VGA 640x480 UYVY
 -> UYVY to RGB
 -> workspace crop / letterbox / resize
 -> 416x416 RGB
--> YOLOv8n-derived INT8 detector inference
+-> e2 studio / RA 工具链完成量化和转换
+-> board-side detector inference
 -> detector post-processing
 -> bbox reverse transform to VGA coordinates
 ```
@@ -105,7 +105,7 @@ bbox_xyxy in VGA coordinates
 
 ## Open Questions
 
-1. YOLOv8n INT8/TFLite 是否能被 RUHMI 接受。
+1. 板侧 e2 studio / RA 工具链更适合接受 raw ONNX 还是带 NMS 的 ONNX。
 2. YOLOv8n head 的后处理是否适合在 CM85 上实现。
 3. Tensor Arena、SDRAM、OSPI 模型存储和推理延迟是否满足触发式运行。
 4. 自采桌面数据的最终类别表和样本量。

@@ -15,7 +15,7 @@ Last updated: 2026-05-29
 7. 模型 A 输出 class、confidence、bbox，bbox 必须反变换回 VGA 坐标。
 8. 预设身份由 class 表达，例如 `phone_A`、`phone_other`，不单独输出身份字段。
 9. 模型 A v0 基础训练模型定为 Ultralytics `yolov8n.pt` COCO-pretrained detect model。
-10. 模型 A v0 首轮实验只要求 PC 侧跑通加载、smoke training、predict 和 ONNX/TFLite/INT8 候选导出。
+10. 模型 A v0 首轮实验只要求 PC 侧跑通加载、smoke training、predict 和 PT/ONNX 导出。
 11. YOLO 原始输出 tensor、score 计算、NMS 和阈值属于模型 A 内部实现细节；对外接口统一收敛到 `semantic_det_raw_t`。
 12. 模型 B 是 ROI 级 RGB 抓取矩形模型。
 13. 模型 B 的 ROI 必须从 VGA 原图裁剪，而不是从模型 A 的 416x416 输入图裁剪。
@@ -27,7 +27,7 @@ Last updated: 2026-05-29
 ## Not Frozen Yet
 
 1. 模型 A 最终上板版本是否仍使用 YOLOv8n。
-2. YOLOv8n 经 RUHMI/INT8/后处理验证后是否满足 RA8P1 资源约束。
+2. YOLOv8n 经板侧 e2 studio / RA 工具链转换、量化和后处理验证后是否满足 RA8P1 资源约束。
 3. 模型 B 的具体网络结构。
 4. 模型 B 的输入尺寸。
 5. 模型 B 是否加入 mask、坐标通道、class embedding。
@@ -36,7 +36,7 @@ Last updated: 2026-05-29
 8. ROI 外扩比例。
 9. 工作区裁剪范围。
 10. 最终类别表数量。
-11. RUHMI 编译结果、Tensor Arena 占用、推理延迟、后处理成本。
+11. 板侧转换结果、Tensor Arena 占用、推理延迟、后处理成本。
 
 ## Coordinate Contract
 
