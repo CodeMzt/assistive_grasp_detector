@@ -1,0 +1,50 @@
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local tool indexes and experiment runs
+.codegraph/
+runs/
+
+# Build outputs
+build/
+dist/
+Debug/
+Release/
+*.elf
+*.map
+*.hex
+*.bin
+*.srec
+*.lst
+*.o
+*.obj
+*.d
+
+# Logs and captures
+logs/
+captures/
+*.log
+
+# Local datasets and generated model artifacts
+data/raw/
+data/interim/
+data/generated/
+models/generated/
+models/exported/
+*.onnx
+*.tflite
+*.pt
+*.pth
+*.h5
+
+# Keep placeholders
+!.gitkeep
