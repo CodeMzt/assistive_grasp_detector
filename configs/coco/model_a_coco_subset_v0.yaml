@@ -1,0 +1,22 @@
+schema_version: model_a_coco_subset_v0
+target_classes: ../classes/assistive_grasp_v0.yaml
+purpose: >
+  COCO is used only as auxiliary Model A detection data. It is not used for
+  Model B grasp rectangles and it must not be mapped to *_A identity classes.
+splits:
+  train:
+    images: train2017
+    annotations: annotations/instances_train2017.json
+  val:
+    images: val2017
+    annotations: annotations/instances_val2017.json
+max_per_class:
+  train: 500
+  val: 100
+category_map:
+  cell phone: phone_other
+  cup: cup_other
+  bottle: bottle_other
+  book: book
+exclude_categories:
+  - remote

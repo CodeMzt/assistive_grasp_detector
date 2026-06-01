@@ -1,0 +1,61 @@
+schema_version: assistive_grasp_classes_v0
+status: draft_unfrozen
+source: D:/Project/AssistiveGraspAnnotator/examples/classes.yaml
+notes: >
+  Initial class table copied from AssistiveGraspAnnotator. This is a v0 data
+  infrastructure default, not a frozen final product ontology.
+classes:
+  - id: 0
+    name: phone_A
+    graspable: true
+    policy: grasp_rect
+
+  - id: 1
+    name: remote_A
+    graspable: true
+    policy: grasp_rect
+
+  - id: 2
+    name: medicine_box_A
+    graspable: true
+    policy: grasp_rect
+
+  - id: 3
+    name: tissue_box_A
+    graspable: true
+    policy: grasp_rect
+
+  - id: 4
+    name: cup_A
+    graspable: true
+    policy: center_or_grasp_rect
+
+  - id: 5
+    name: bottle_A
+    graspable: true
+    policy: center_or_grasp_rect
+
+  - id: 6
+    name: cup_other
+    graspable: false
+    policy: report_only
+
+  - id: 7
+    name: phone_other
+    graspable: false
+    policy: report_only
+
+  - id: 8
+    name: bottle_other
+    graspable: false
+    policy: report_only
+
+  - id: 9
+    name: book
+    graspable: false
+    policy: report_only
+
+  - id: 10
+    name: box_other
+    graspable: false
+    policy: report_only

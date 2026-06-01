@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "assistive-grasp-detector"
+version = "0.1.0"
+description = "Data infrastructure for the assistive grasp detector project."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.23",
+  "Pillow>=9.0",
+  "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest>=7.0",
+]
+
+[project.scripts]
+validate_self_dataset = "assistive_grasp_detector.cli:validate_self_dataset_main"
+build_model_a_yolo = "assistive_grasp_detector.cli:build_model_a_yolo_main"
+index_model_b_targets = "assistive_grasp_detector.cli:index_model_b_targets_main"
+prepare_coco_subset = "assistive_grasp_detector.cli:prepare_coco_subset_main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "--basetemp=.pytest-tmp"

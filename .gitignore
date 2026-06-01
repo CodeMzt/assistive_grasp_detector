@@ -9,6 +9,8 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+.pytest_cache/
+.pytest-tmp/
 
 # Local tool indexes and experiment runs
 .codegraph/
@@ -37,9 +39,19 @@ calibration_image_sample_data_*.npy
 calibration_image_sample_data_*.zip
 
 # Local datasets and generated model artifacts
-data/raw/
-data/interim/
-data/generated/
+data/external/**
+data/raw/**
+data/interim/**
+data/generated/**
+!data/
+!data/external/
+!data/external/.gitkeep
+!data/raw/
+!data/raw/.gitkeep
+!data/interim/
+!data/interim/.gitkeep
+!data/generated/
+!data/generated/.gitkeep
 models/generated/
 models/exported/
 *.onnx
