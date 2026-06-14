@@ -1,4 +1,4 @@
-"""Shared schema helpers for dataset infrastructure."""
+"""Shared schema helpers for EthosSafeDet data infrastructure."""
 
 from __future__ import annotations
 
@@ -15,6 +15,24 @@ EXPECTED_VGA_SIZE = (VGA_WIDTH, VGA_HEIGHT)
 ALLOWED_SPLITS = {"train", "val", "test"}
 ALLOWED_DIFFICULTIES = {"easy", "medium", "hard", "invalid"}
 TARGET_MAP_KEYS = ("q_map", "sin2theta_map", "cos2theta_map", "width_map")
+ETHOSSAFEDET_SCHEMA_VERSION = "ethossafedet_manifest_v1"
+ETHOSSAFEDET_MODEL_ID = "EthosSafeDet-A"
+ETHOSSAFEDET_INPUT_SIZE = 320
+ETHOSSAFEDET_FALLBACK_INPUT_SIZE = 256
+ETHOSSAFEDET_STRIDE = 8
+ETHOSSAFEDET_CLASS_NAMES = (
+    "earbud_A",
+    "phial_A",
+    "bottle_A",
+    "phone_A",
+    "remote_A",
+    "tissue_A",
+)
+ETHOSSAFEDET_NUM_CLASSES = len(ETHOSSAFEDET_CLASS_NAMES)
+ETHOSSAFEDET_MIN_CALIBRATION_IMAGES = 200
+ETHOSSAFEDET_MAX_CALIBRATION_IMAGES = 500
+ETHOSSAFEDET_ARENA_LIMIT_BYTES = int(2.5 * 1024 * 1024)
+ETHOSSAFEDET_WEIGHTS_LIMIT_BYTES = int(1.5 * 1024 * 1024)
 
 
 @dataclass(frozen=True)
@@ -103,8 +121,15 @@ def classes_by_name(classes: list[ClassInfo]) -> dict[str, ClassInfo]:
     return {cls.name: cls for cls in classes}
 
 
-def yolo_names(classes: list[ClassInfo]) -> dict[int, str]:
+def contiguous_class_names(classes: list[ClassInfo]) -> dict[int, str]:
     if not classes:
         return {}
     class_map = {cls.id: cls.name for cls in classes}
     return {class_id: class_map.get(class_id, f"unused_{class_id}") for class_id in range(max(class_map) + 1)}
+
+
+def validate_ethossafedet_classes(classes: list[ClassInfo]) -> None:
+    expected = list(enumerate(ETHOSSAFEDET_CLASS_NAMES))
+    actual = [(cls.id, cls.name) for cls in classes]
+    if actual != expected:
+        raise ValueError(f"EthosSafeDet-A v1 requires classes {expected}, got {actual}")

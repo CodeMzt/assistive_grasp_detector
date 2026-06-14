@@ -4,21 +4,24 @@ import json
 from pathlib import Path
 
 import numpy as np
+import pytest
 import yaml
 from PIL import Image
 
-from assistive_grasp_detector.annotator_dataset import (
-    stable_split_for_key,
-    validate_self_dataset,
+from assistive_grasp_detector.annotator_dataset import validate_self_dataset
+from assistive_grasp_detector.ethossafedet_manifest import (
+    build_calibration_manifest,
+    load_manifest_records,
+    prepare_ethossafedet_manifest_from_export,
+    prepare_ethossafedet_manifest_from_self_dataset,
 )
-from assistive_grasp_detector.coco_subset import prepare_coco_subset
+from assistive_grasp_detector.ethossafedet_export import export_onnx_reference
+from assistive_grasp_detector.ethossafedet_train import assign_targets, train_ethossafedet_a
 from assistive_grasp_detector.model_b_index import index_model_b_targets
-from assistive_grasp_detector.yolo_export import build_model_a_yolo
 
 
-def test_self_dataset_validation_and_yolo_export(tmp_path: Path) -> None:
+def test_self_dataset_validation_and_ethossafedet_manifest(tmp_path: Path) -> None:
     dataset = _make_self_dataset(tmp_path / "self_dataset")
-
     report = validate_self_dataset(dataset)
 
     assert report.ok
@@ -26,66 +29,126 @@ def test_self_dataset_validation_and_yolo_export(tmp_path: Path) -> None:
     assert report.object_count == 2
     assert any(issue.code == "split_missing" for issue in report.warnings)
 
-    out = tmp_path / "generated" / "model_a" / "self_v0"
-    result = build_model_a_yolo(dataset, out)
-
-    assert result.label_count == 2
-    label = (out / "labels" / "train" / "board_vga" / "000001.txt").read_text(encoding="utf-8").strip()
-    assert label == "0 0.500000 0.500000 0.250000 0.250000"
-
-    fallback_split = stable_split_for_key("board_vga/000002.jpg")
-    assert (out / "labels" / fallback_split / "board_vga" / "000002.txt").is_file()
-    dataset_yaml = yaml.safe_load((out / "dataset.yaml").read_text(encoding="utf-8"))
-    assert dataset_yaml["names"][0] == "phone_A"
-    assert dataset_yaml["names"][6] == "cup_other"
-
-
-def test_coco_subset_mapping_cap_and_exclusion(tmp_path: Path) -> None:
-    classes_path = _write_classes(tmp_path / "classes.yaml")
-    coco_root = tmp_path / "coco2017"
-    _make_coco_fixture(coco_root)
-    config = tmp_path / "coco_config.yaml"
-    config.write_text(
-        yaml.safe_dump(
-            {
-                "target_classes": str(classes_path),
-                "splits": {
-                    "train": {
-                        "images": "train2017",
-                        "annotations": "annotations/instances_train2017.json",
-                    }
-                },
-                "max_per_class": {"train": 1},
-                "category_map": {
-                    "bottle": "bottle_other",
-                    "cup": "cup_other",
-                    "book": "book",
-                    "cell phone": "phone_other",
-                },
-                "exclude_categories": ["remote"],
-            },
-            sort_keys=False,
-        ),
-        encoding="utf-8",
-    )
-
-    out = tmp_path / "generated" / "model_a" / "coco_subset_v0"
-    result = prepare_coco_subset(coco_root, config, out)
+    out = tmp_path / "ethossafedet_manifest.jsonl"
+    result = prepare_ethossafedet_manifest_from_self_dataset(dataset, out)
 
     assert result.ok
-    assert result.split_counts["train"] == 2
-    assert result.label_counts["train"] == 2
-    label_files = sorted((out / "labels" / "train").glob("*.txt"))
-    labels = "\n".join(path.read_text(encoding="utf-8") for path in label_files)
-    label_lines = [line for line in labels.splitlines() if line.strip()]
-    assert len(label_lines) == 2
-    assert "8 " in labels
-    assert "6 " in labels
-    assert "1 " not in labels
-    assert not (out / "images" / "train" / "000000000003.jpg").exists()
+    assert result.record_count == 2
+    assert result.object_count == 2
+    records = load_manifest_records(out)
+    first = records[0]
+    assert first["schema_version"] == "ethossafedet_manifest_v1"
+    assert first["width"] == 640
+    assert first["height"] == 480
+    assert first["objects"][0]["class_name"] == "earbud_A"
+    assert first["objects"][0]["bbox_xyxy_vga"] == [240.0, 180.0, 400.0, 300.0]
 
 
-def test_model_b_target_index_validation(tmp_path: Path) -> None:
+def test_export_layout_manifest_conversion_with_negative_whitelist(tmp_path: Path) -> None:
+    dataset = _make_export_dataset(tmp_path / "export_dataset", count=4)
+    out = tmp_path / "ethossafedet_manifest.jsonl"
+
+    result = prepare_ethossafedet_manifest_from_export(dataset, out, negative_image_ids=["000003"])
+
+    assert result.ok
+    assert result.record_count == 4
+    assert result.object_count == 3
+    assert result.negative_count == 1
+    assert result.excluded_count == 0
+    records = load_manifest_records(out)
+    positive = next(record for record in records if record["image"].endswith("000001.png"))
+    assert positive["objects"][0]["class_id"] == 0
+    assert positive["objects"][0]["bbox_xyxy_vga"] == [240.0, 180.0, 400.0, 300.0]
+    negative = next(record for record in records if record["image"].endswith("000003.png"))
+    assert negative["negative"] is True
+    assert negative["objects"] == []
+
+
+def test_calibration_manifest_rejects_less_than_200_images(tmp_path: Path) -> None:
+    dataset = _make_export_dataset(tmp_path / "export_dataset", count=3)
+    manifest = tmp_path / "ethossafedet_manifest.jsonl"
+    prepare_ethossafedet_manifest_from_export(dataset, manifest, negative_image_ids=["000003"])
+
+    with pytest.raises(ValueError, match="need 200 real VGA camera images"):
+        build_calibration_manifest(manifest, tmp_path / "calibration.json", target_count=200)
+
+
+def test_calibration_manifest_accepts_200_real_images(tmp_path: Path) -> None:
+    dataset = _make_export_dataset(tmp_path / "export_dataset", count=200)
+    manifest = tmp_path / "ethossafedet_manifest.jsonl"
+    result = prepare_ethossafedet_manifest_from_export(dataset, manifest, negative_image_ids=["000003"])
+    assert result.ok
+
+    calibration = build_calibration_manifest(manifest, tmp_path / "calibration.json", target_count=200, seed=123)
+
+    assert calibration["schema_version"] == "ethossafedet_calibration_v1"
+    assert len(calibration["items"]) == 200
+    assert all(Path(item["image"]).is_file() for item in calibration["items"])
+
+
+def test_assign_targets_ltrb_center_cell() -> None:
+    targets = assign_targets(
+        [{"class_id": 2, "bbox_xyxy_vga": [240.0, 180.0, 400.0, 300.0]}],
+        input_size=320,
+        stride=8,
+    )
+
+    assert targets["positive"].sum() >= 1
+    gy, gx = np.argwhere(targets["positive"])[0]
+    assert targets["cls"][2, gy, gx] > 0.0
+    assert targets["cls"][2, gy, gx] <= 1.0
+    assert np.all(targets["box"][:, gy, gx] > 0)
+
+
+def test_train_report_outputs_json_csv_markdown_and_best_checkpoint(tmp_path: Path) -> None:
+    pytest.importorskip("torch")
+    pytest.importorskip("onnx")
+    dataset = _make_train_report_dataset(tmp_path / "train_report_dataset")
+    manifest = tmp_path / "ethossafedet_manifest.jsonl"
+    result = prepare_ethossafedet_manifest_from_self_dataset(dataset, manifest)
+    assert result.ok
+
+    run_dir = tmp_path / "run"
+    report = train_ethossafedet_a(
+        manifest,
+        run_dir,
+        input_size=32,
+        epochs=1,
+        batch_size=2,
+        lr=1e-3,
+        device="cpu",
+        seed=7,
+        eval_score_threshold=0.25,
+        nms_iou_threshold=0.5,
+    )
+
+    assert report["schema_version"] == "ethossafedet_train_report_v1"
+    assert report["best_epoch"] == 1
+    assert Path(report["checkpoint"]).is_file()
+    assert Path(report["last_checkpoint"]).is_file()
+    assert report["checkpoint_sha256"]
+    assert report["last_checkpoint_sha256"]
+    assert len(report["history"]) == 1
+    assert report["history"][0]["val_top1_class_acc"] is not None
+    report_paths = report["report_paths"]
+    assert Path(report_paths["json"]).is_file()
+    assert Path(report_paths["csv"]).is_file()
+    assert Path(report_paths["markdown"]).is_file()
+
+    saved_report = json.loads(Path(report_paths["json"]).read_text(encoding="utf-8"))
+    assert saved_report["data"]["record_count"] == 4
+    assert saved_report["hyperparameters"]["seed"] == 7
+    csv_lines = Path(report_paths["csv"]).read_text(encoding="utf-8").splitlines()
+    assert csv_lines[0].startswith("epoch,train_loss,train_cls_loss")
+    assert len(csv_lines) == 2
+    assert "EthosSafeDet-A Training Report" in Path(report_paths["markdown"]).read_text(encoding="utf-8")
+
+    onnx_path = run_dir / "ethossafedet_a_32.onnx"
+    exported = export_onnx_reference(report["checkpoint"], onnx_path, input_size=32)
+    assert Path(exported["onnx"]).is_file()
+
+
+def test_model_b_target_index_validation_still_reference_only(tmp_path: Path) -> None:
     root = tmp_path / "target_maps"
     item_dir = root / "000001"
     item_dir.mkdir(parents=True)
@@ -108,13 +171,13 @@ def test_model_b_target_index_validation(tmp_path: Path) -> None:
                 "map_size": 4,
                 "instance_id": 1,
                 "class_id": 0,
-                "class_name": "phone_A",
+                "class_name": "earbud_A",
             }
         ),
         encoding="utf-8",
     )
 
-    out = tmp_path / "generated" / "manifests" / "model_b_self_v0.jsonl"
+    out = tmp_path / "model_b_reference.jsonl"
     result = index_model_b_targets(root, out)
 
     assert result.ok
@@ -122,62 +185,70 @@ def test_model_b_target_index_validation(tmp_path: Path) -> None:
     record = json.loads(out.read_text(encoding="utf-8").strip())
     assert record["target_npz"] == "000001/obj_001.npz"
     assert record["positive_pixels"] == 1
-    assert record["map_size"] == 4
 
 
 def _make_self_dataset(root: Path) -> Path:
-    _write_classes(root / "classes.yaml")
+    _write_ethos_classes(root / "classes.yaml")
     image_dir = root / "images" / "board_vga"
     ann_dir = root / "annotations" / "board_vga"
     image_dir.mkdir(parents=True)
     ann_dir.mkdir(parents=True)
-
     Image.new("RGB", (640, 480), color=(32, 32, 32)).save(image_dir / "000001.jpg")
     Image.new("RGB", (640, 480), color=(64, 64, 64)).save(image_dir / "000002.jpg")
-    _write_annotation(
-        ann_dir / "000001.json",
-        "000001",
-        "images/board_vga/000001.jpg",
-        "train",
-        class_id=0,
-        class_name="phone_A",
-        bbox=[240, 180, 400, 300],
-    )
-    _write_annotation(
-        ann_dir / "000002.json",
-        "000002",
-        "images/board_vga/000002.jpg",
-        None,
-        class_id=6,
-        class_name="cup_other",
-        bbox=[100, 100, 200, 220],
-    )
+    _write_annotation(ann_dir / "000001.json", "images/board_vga/000001.jpg", "train", 0, "earbud_A", [240, 180, 400, 300])
+    _write_annotation(ann_dir / "000002.json", "images/board_vga/000002.jpg", None, 1, "phial_A", [100, 100, 200, 220])
     return root
 
 
-def _write_classes(path: Path) -> Path:
+def _make_train_report_dataset(root: Path) -> Path:
+    _write_ethos_classes(root / "classes.yaml")
+    image_dir = root / "images" / "board_vga"
+    ann_dir = root / "annotations" / "board_vga"
+    image_dir.mkdir(parents=True)
+    ann_dir.mkdir(parents=True)
+    rows = [
+        ("000001", "train", 0, "earbud_A", [240, 180, 400, 300], (32, 32, 32)),
+        ("000002", "train", 1, "phial_A", [100, 100, 220, 240], (64, 64, 64)),
+        ("000003", "val", 2, "bottle_A", [200, 160, 360, 320], (96, 96, 96)),
+        ("000004", "val", 3, "phone_A", [260, 170, 430, 310], (128, 128, 128)),
+    ]
+    for stem, split, class_id, class_name, bbox, color in rows:
+        Image.new("RGB", (640, 480), color=color).save(image_dir / f"{stem}.jpg")
+        _write_annotation(ann_dir / f"{stem}.json", f"images/board_vga/{stem}.jpg", split, class_id, class_name, bbox)
+    return root
+
+
+def _make_export_dataset(root: Path, count: int) -> Path:
+    (root / "images" / "camera_1").mkdir(parents=True)
+    (root / "camera_1").mkdir(parents=True)
+    _write_ethos_classes(root / "classes.yaml")
+    for index in range(1, count + 1):
+        stem = f"{index:06d}"
+        Image.new("RGB", (640, 480), color=(index % 255, 16, 16)).save(root / "images" / "camera_1" / f"{stem}.png")
+        if stem == "000003":
+            continue
+        class_id = (index - 1) % 6
+        (root / "camera_1" / f"{stem}.txt").write_text(
+            f"{class_id} 0.500000 0.500000 0.250000 0.250000\n",
+            encoding="utf-8",
+        )
+    return root
+
+
+def _write_ethos_classes(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    names = ["earbud_A", "phial_A", "bottle_A", "phone_A", "remote_A", "tissue_A"]
     path.write_text(
         yaml.safe_dump(
-            {
-                "classes": [
-                    {"id": 0, "name": "phone_A", "graspable": True, "policy": "grasp_rect"},
-                    {"id": 6, "name": "cup_other", "graspable": False, "policy": "report_only"},
-                    {"id": 7, "name": "phone_other", "graspable": False, "policy": "report_only"},
-                    {"id": 8, "name": "bottle_other", "graspable": False, "policy": "report_only"},
-                    {"id": 9, "name": "book", "graspable": False, "policy": "report_only"},
-                ]
-            },
+            {"classes": [{"id": i, "name": name, "graspable": True, "policy": "grasp_rect"} for i, name in enumerate(names)]},
             sort_keys=False,
         ),
         encoding="utf-8",
     )
-    return path
 
 
 def _write_annotation(
     path: Path,
-    image_id: str,
     image_path: str,
     split: str | None,
     class_id: int,
@@ -185,7 +256,7 @@ def _write_annotation(
     bbox: list[int],
 ) -> None:
     data = {
-        "image_id": image_id,
+        "image_id": path.stem,
         "image_path": image_path,
         "width": 640,
         "height": 480,
@@ -197,8 +268,8 @@ def _write_annotation(
                 "class_id": class_id,
                 "class_name": class_name,
                 "bbox_xyxy": bbox,
-                "graspable": class_id == 0,
-                "policy": "grasp_rect" if class_id == 0 else "report_only",
+                "graspable": True,
+                "policy": "grasp_rect",
                 "grasps": [],
             }
         ],
@@ -206,34 +277,3 @@ def _write_annotation(
     if split is not None:
         data["split"] = split
     path.write_text(json.dumps(data, indent=2), encoding="utf-8")
-
-
-def _make_coco_fixture(root: Path) -> None:
-    ann_dir = root / "annotations"
-    img_dir = root / "train2017"
-    ann_dir.mkdir(parents=True)
-    img_dir.mkdir(parents=True)
-    for index in range(1, 4):
-        Image.new("RGB", (100, 100), color=(index, index, index)).save(img_dir / f"{index:012d}.jpg")
-
-    coco = {
-        "images": [
-            {"id": 1, "file_name": "000000000001.jpg", "width": 100, "height": 100},
-            {"id": 2, "file_name": "000000000002.jpg", "width": 100, "height": 100},
-            {"id": 3, "file_name": "000000000003.jpg", "width": 100, "height": 100},
-        ],
-        "categories": [
-            {"id": 44, "name": "bottle"},
-            {"id": 47, "name": "cup"},
-            {"id": 65, "name": "remote"},
-            {"id": 1, "name": "person"},
-        ],
-        "annotations": [
-            {"id": 1, "image_id": 1, "category_id": 44, "bbox": [10, 10, 20, 30]},
-            {"id": 2, "image_id": 2, "category_id": 44, "bbox": [10, 10, 20, 30]},
-            {"id": 3, "image_id": 2, "category_id": 47, "bbox": [20, 20, 10, 10]},
-            {"id": 4, "image_id": 3, "category_id": 65, "bbox": [5, 5, 10, 10]},
-            {"id": 5, "image_id": 3, "category_id": 1, "bbox": [0, 0, 50, 50]},
-        ],
-    }
-    (ann_dir / "instances_train2017.json").write_text(json.dumps(coco), encoding="utf-8")

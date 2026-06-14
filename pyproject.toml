@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "assistive-grasp-detector"
 version = "0.1.0"
-description = "Data infrastructure for the assistive grasp detector project."
+description = "EthosSafeDet-A data, training, export, and gate tooling for the assistive grasp detector project."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -19,11 +19,25 @@ test = [
   "pytest>=7.0",
 ]
 
+[tool.setuptools.packages.find]
+include = ["assistive_grasp_detector*"]
+
 [project.scripts]
 validate_self_dataset = "assistive_grasp_detector.cli:validate_self_dataset_main"
-build_model_a_yolo = "assistive_grasp_detector.cli:build_model_a_yolo_main"
 index_model_b_targets = "assistive_grasp_detector.cli:index_model_b_targets_main"
-prepare_coco_subset = "assistive_grasp_detector.cli:prepare_coco_subset_main"
+prepare_ethossafedet_manifest = "assistive_grasp_detector.cli:prepare_ethossafedet_manifest_main"
+build_ethossafedet_calibration = "assistive_grasp_detector.cli:build_ethossafedet_calibration_main"
+train_ethossafedet_a = "assistive_grasp_detector.cli:train_ethossafedet_a_main"
+export_ethossafedet_onnx = "assistive_grasp_detector.cli:export_ethossafedet_onnx_main"
+export_ethossafedet_tflite = "assistive_grasp_detector.cli:export_ethossafedet_tflite_main"
+check_onnx_ops = "assistive_grasp_detector.cli:check_onnx_ops_main"
+check_tflite_ops = "assistive_grasp_detector.cli:check_tflite_ops_main"
+compare_ethossafedet_reference = "assistive_grasp_detector.cli:compare_ethossafedet_reference_main"
+run_host_mera_gate = "assistive_grasp_detector.cli:run_host_mera_gate_main"
+inspect_ruhmi_dispatch = "assistive_grasp_detector.cli:inspect_ruhmi_dispatch_main"
+check_memory_budget = "assistive_grasp_detector.cli:check_memory_budget_main"
+make_static_golden = "assistive_grasp_detector.cli:make_static_golden_main"
+make_ethossafedet_report = "assistive_grasp_detector.cli:make_ethossafedet_report_main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

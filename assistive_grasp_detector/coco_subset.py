@@ -1,4 +1,4 @@
-"""Prepare a local COCO detection subset for Model A experiments."""
+"""Prepare a local COCO detection subset for auxiliary experiments."""
 
 from __future__ import annotations
 
@@ -11,10 +11,10 @@ from typing import Any
 from assistive_grasp_detector.schema import (
     Issue,
     classes_by_name,
+    contiguous_class_names,
     load_classes,
     load_yaml,
     write_yaml,
-    yolo_names,
 )
 
 
@@ -91,7 +91,7 @@ def prepare_coco_subset(
             "path": out.resolve().as_posix(),
             "train": "images/train",
             "val": "images/val",
-            "names": yolo_names(classes),
+            "names": contiguous_class_names(classes),
         },
     )
     manifest = {
@@ -153,7 +153,7 @@ def _prepare_coco_split(
             continue
 
         bbox = annotation.get("bbox", [])
-        line = _coco_bbox_to_yolo_line(bbox, int(image["width"]), int(image["height"]), int(target_class.id))
+        line = _coco_bbox_to_normalized_bbox_line(bbox, int(image["width"]), int(image["height"]), int(target_class.id))
         if line is None:
             result.add("warning", "coco_bbox_invalid", "skipped invalid COCO bbox", ann_path)
             continue
@@ -185,7 +185,7 @@ def _prepare_coco_split(
     result.label_counts[split] = label_count
 
 
-def _coco_bbox_to_yolo_line(
+def _coco_bbox_to_normalized_bbox_line(
     bbox: list[Any],
     image_width: int,
     image_height: int,

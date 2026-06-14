@@ -1,10 +1,10 @@
-# Data Infrastructure v0
+# Data Infrastructure V2 Contract
 
-本仓库的数据基础设施只消费 `AssistiveGraspAnnotator` 的磁盘数据契约，不复制 GUI 标注器源码，也不把标注器作为子模块。
+当前系统数据合同与固件 Model A V2 对齐：从 OV5640 VGA 640x480 场景级母图与 bbox/class/orientation 标注生成中性的 `ethossafedet_manifest.jsonl`，再用于训练、校准、导出和 gate。旧 bbox-only manifest 与 target-map/ROI 工具只能作为迁移输入或 deprecated reference。
 
-## 自采数据契约
+## Board-Domain Source
 
-推荐的数据根目录形态：
+推荐源数据形态：
 
 ```text
 dataset_root/
@@ -15,39 +15,96 @@ dataset_root/
   annotations/
     board_vga/
       000001.json
-  splits/
-  generated/
-    detector_yolo/
-    target_maps/
 ```
 
-关键约定：
+现有首批导出数据仍可作为迁移输入：
 
-- `images/board_vga/*.jpg` 是 OV5640 VGA 640x480 RGB 文件形式的训练侧母图。
-- `annotations/board_vga/*.json` 与 `images/board_vga/*.jpg` 按相同相对路径对应。
-- JSON 里的 `bbox_xyxy` 和 grasp `points` 都必须是 VGA 640x480 坐标。
-- `classes.yaml` 使用 `configs/classes/assistive_grasp_v0.yaml` 的结构；当前类别表是 v0/未冻结。
-- 标注器导出的 Model B `generated/target_maps/**/*.npz` 是训练 target 的来源，主仓库不复刻 target map 生成算法。
+```text
+export_dataset/
+  classes.yaml
+  images/
+    camera_1/
+      000001.png
+  camera_1/
+    000001.txt
+```
 
-## CLI
+其中 `camera_1/*.txt` 只作为 legacy normalized bbox source 读取，格式为 `class_id cx cy w h`；它缺少 orientation，不满足 Model A V2 训练合同。生成后的主契约必须包含 `bbox_xyxy_vga`，并在有方向目标上包含 `theta_valid=true` 与 orientation 标签。
+
+## Manifest Contract
+
+`ethossafedet_manifest.jsonl` 每行是一张 640x480 图：
+
+```json
+{
+  "schema_version": "ethossafedet_manifest_v2",
+  "dataset_root": "D:/Project/assistive_grasp_detector/data/raw/model_a/first_batch_20260604",
+  "image": "images/camera_1/000001.png",
+  "split": "train",
+  "width": 640,
+  "height": 480,
+  "negative": false,
+  "objects": [
+    {
+      "class_id": 0,
+      "class_name": "earbud_A",
+      "bbox_xyxy_vga": [395.0, 137.0, 482.0, 219.0],
+      "theta_valid": true,
+      "grasp_yaw": 0.42,
+      "orientation_sin2theta": 0.744643,
+      "orientation_cos2theta": 0.667462
+    }
+  ]
+}
+```
+
+V2 类别必须严格等于：
+
+```text
+0 earbud_A
+1 phial_A
+2 bottle_A
+3 phone_A
+4 remote_A
+5 tissue_A
+```
+
+## Commands
 
 ```powershell
 validate_self_dataset --dataset D:\path\to\dataset
-build_model_a_yolo --dataset D:\path\to\dataset --out data\generated\model_a\self_v0
-index_model_b_targets --target-maps D:\path\to\dataset\generated\target_maps --out data\generated\manifests\model_b_self_v0.jsonl
-prepare_coco_subset --coco-root data\external\coco2017 --config configs\coco\model_a_coco_subset_v0.yaml --out data\generated\model_a\coco_subset_v0
+
+prepare_ethossafedet_manifest `
+  --source-format self `
+  --dataset D:\path\to\dataset `
+  --out data\generated\ethossafedet_a\self_v1\ethossafedet_manifest.jsonl
+
+prepare_ethossafedet_manifest `
+  --source-format export `
+  --dataset data\raw\model_a\first_batch_20260604 `
+  --out data\generated\ethossafedet_a\first_batch_20260604\ethossafedet_manifest.jsonl `
+  --negative-image-id 000139
+
+build_ethossafedet_calibration `
+  --manifest data\generated\ethossafedet_a\first_batch_20260604\ethossafedet_manifest.jsonl `
+  --out data\generated\ethossafedet_a\first_batch_20260604\calibration_320.json `
+  --target-count 320
 ```
 
-`validate_self_dataset` 会把非 640x480 图像标为 warning。warning 不代表板端事实已验证；所有板端延迟、内存和后处理成本仍以实验记录为准。
+## Orientation Rules
 
-## COCO 用法边界
+- Orientation is image-plane theta in the VGA mother image, encoded as `sin(2theta), cos(2theta)` for model training and raw output.
+- `theta_valid=true` is required for graspable preset objects with a stable main axis.
+- Directionless, symmetric, ambiguous, or occluded objects must keep `theta_valid=false`; they may still contribute class/bbox supervision.
+- Legacy bbox-only records can be used for class/bbox migration, but they cannot be counted as V2 orientation coverage.
 
-COCO 只用于 Model A 的检测预热或泛化实验：
+## Calibration Rules
 
-- `cell phone -> phone_other`
-- `cup -> cup_other`
-- `bottle -> bottle_other`
-- `book -> book`
-- `remote` 默认排除，因为 v0 类别表没有 `remote_other`
+- Calibration source must be an EthosSafeDet manifest with real 640x480 board-camera images.
+- `target_count` must be in `[200, 500]`.
+- Every selected image path is written explicitly to `ethossafedet_calibration_v1` JSON.
+- Random arrays, temporary screenshots, and single-image smoke inputs are rejected by construction.
 
-COCO 不用于 Model B，不生成 grasp rectangle，也不映射到 `phone_A`、`cup_A`、`bottle_A` 等身份类。
+## Notes
+
+Legacy target-map/ROI indexing remains available as deprecated reference tooling only. It is not part of Model A V2 training, firmware deployment, or final acceptance.

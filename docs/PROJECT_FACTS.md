@@ -1,6 +1,6 @@
 # Project Facts
 
-Last updated: 2026-05-29
+Last updated: 2026-06-14
 
 本文件只记录当前已经明确或需要实测确认的项目事实。未实测内容不得写成已完成事实。
 
@@ -9,112 +9,66 @@ Last updated: 2026-05-29
 1. 视觉硬件路线采用固定外部 RGB 相机，即 eye-to-hand。
 2. 当前相机输入基准为 OV5640 VGA 640x480 YUV422，按 UYVY 解释。
 3. VGA 640x480 原图是视觉系统唯一坐标母图。
-4. 模型 A 和模型 B 都是触发式运行，不设计为两个模型同时实时常跑。
-5. 模型 A 是语义检测/定位模型，不是纯分类模型。
-6. 模型 A 训练验证阶段输入暂定为 416x416 RGB。
-7. 模型 A 输出 class、confidence、bbox，bbox 必须反变换回 VGA 坐标。
-8. 预设身份由 class 表达，例如 `phone_A`、`phone_other`，不单独输出身份字段。
-9. 模型 A v0 基础训练模型定为 Ultralytics `yolov8n.pt` COCO-pretrained detect model。
-10. 模型 A v0 首轮实验只要求 PC 侧跑通加载、smoke training、predict 和 PT/ONNX 导出。
-11. YOLO 原始输出 tensor、score 计算、NMS 和阈值属于模型 A 内部实现细节；对外接口统一收敛到 `semantic_det_raw_t`。
-12. 模型 B 是 ROI 级 RGB 抓取矩形模型。
-13. 模型 B 的 ROI 必须从 VGA 原图裁剪，而不是从模型 A 的 416x416 输入图裁剪。
-14. 模型 B 输出抓取中心、角度、宽度、质量分数等候选，不直接控制机械臂。
-15. 桌面平面标定负责从 VGA 像素坐标到机械臂桌面坐标映射。
-16. 轨迹规划、RL、力触觉闭环负责接触、夹持、抬升、滑移补偿与安全递送。
-17. 数据集采用场景级主标注，再生成模型 A 和模型 B 的训练数据。
+4. 当前系统检测合同为 **Model A V2 / EthosSafeDetV2**，目标平台为 RA8P1 Ethos-U55 + RUHMI。
+5. Model A V2 是触发式 6 类桌面物体检测、定位和朝向估计单模型；不再设独立 Model B/ROI 抓取矩形模型。
+6. V2 类别固定为 `earbud_A`、`phial_A`、`bottle_A`、`phone_A`、`remote_A`、`tissue_A`。
+7. V2 主输入为静态 `batch=1, 320x320`；如果 full-int8/MERA/内存 gate 失败，才评估同架构 `256x256` fallback。
+8. V2 模型图只允许 Conv2D、DepthwiseConv2D、PointwiseConv2D、Add、ReLU/ReLU6、静态 Reshape/Pad/Pool 类算子。
+9. V2 禁止 SiLU/Swish/Mish/GELU/Attention/SPPF、大量 concat、DFL、Softmax bins、图内 NMS/TopK/ArgMax/Gather/Shape/Range/Meshgrid/dynamic Slice/dynamic Reshape。
+10. V2 输出 tensor 按 stride 8 和 stride 16 两尺度分离为 `cls_logits`、`box_ltrb`、`orientation`；不输出 `obj`，不把 bbox/class/orientation concat 到同一个 tensor。
+11. V2 模型最后不加 sigmoid/exp/grid decode/atan2/NMS；这些全部在 CM85 C 后处理或 PC reference 后处理中完成。
+12. calibration 必须使用 200-500 张真实板端相机图，不能使用随机 npy 或单张测试图。
+13. ONNX 只作为 PC reference，opset 12/13，static shape，无 dynamic axes。
+14. 主部署产物优先 TFLite full-int8；如果必须走 ONNX -> RUHMI，也必须先过 ONNX op whitelist 和 host MERA gate。
+15. 只有 host MERA detection-level 与 PC reference 对齐后，才允许刷板。
+16. 板端第一阶段只跑 static golden，不恢复 camera/annotated-vga。
+17. 桌面平面标定负责从 VGA 像素坐标到机械臂桌面坐标映射。
+18. 轨迹规划、RL、力触觉闭环负责接触、夹持、抬升、滑移补偿与安全递送。
+
+## Interface Draft
+
+```c
+typedef struct
+{
+    uint8_t class_id;
+    uint8_t theta_valid;
+    float confidence;
+    float bbox_x1_vga;
+    float bbox_y1_vga;
+    float bbox_x2_vga;
+    float bbox_y2_vga;
+    float orientation_sin2theta;
+    float orientation_cos2theta;
+    float orientation_rad;
+} ethossafedet_det_t;
+```
+
+模型 raw outputs:
+
+```text
+stride 8:
+  cls_logits: int8/float tensor, [1, 40, 40, 6]
+  box_ltrb:   int8/float tensor, [1, 40, 40, 4]
+  orientation:int8/float tensor, [1, 40, 40, 2]  # sin(2theta), cos(2theta)
+
+stride 16:
+  cls_logits: int8/float tensor, [1, 20, 20, 6]
+  box_ltrb:   int8/float tensor, [1, 20, 20, 4]
+  orientation:int8/float tensor, [1, 20, 20, 2]  # sin(2theta), cos(2theta)
+```
+
+## Acceptance Gates
+
+1. PC ONNX vs host MERA：主目标 class 一致，bbox IoU >= 0.85，目标 >= 0.90，并记录 orientation 解码差异。
+2. board static vs host MERA：主目标 class 一致，bbox IoU >= 0.85，top-k 候选点一致或可解释，并覆盖 `theta_valid=true` 样本的 orientation 输出。
+3. RUHMI dispatch：heavy conv 全在 Ethos-U region；CPU 只允许 quant/dequant/reshape bridge；`num_base_addr <= 8`。
+4. Memory：arena <= 2.5 MiB，weights <= 1.5 MiB。
 
 ## Not Frozen Yet
 
-1. 模型 A 最终上板版本是否仍使用 YOLOv8n。
-2. YOLOv8n 经板侧 e2 studio / RA 工具链转换、量化和后处理验证后是否满足 RA8P1 资源约束。
-3. 模型 B 的具体网络结构。
-4. 模型 B 的输入尺寸。
-5. 模型 B 是否加入 mask、坐标通道、class embedding。
-6. COCO、Jacquard、VMRD 等公开数据的具体混合比例。
-7. `grasp_quality` 阈值。
-8. ROI 外扩比例。
-9. 工作区裁剪范围。
-10. 最终类别表数量。
-11. 板侧转换结果、Tensor Arena 占用、推理延迟、后处理成本。
-
-## Coordinate Contract
-
-```text
-VGA 640x480
--> 模型 A 预处理到 416x416
--> 模型 A 输出 bbox_416
--> bbox_416 反变换回 bbox_vga
--> 从 VGA 原图裁剪 ROI
--> 模型 B 输出 grasp_center_roi / angle_roi / width_roi
--> 反变换回 grasp_center_vga / grasp_axis_vga
--> homography 映射到机械臂桌面坐标
--> 得到 x_mm / y_mm / grasp_yaw / grasp_width
-```
-
-## Model A Interface Draft
-
-```c
-typedef struct
-{
-    uint8_t class_id;
-    float confidence;
-
-    // Already transformed back to VGA 640x480 coordinates.
-    float bbox_x1;
-    float bbox_y1;
-    float bbox_x2;
-    float bbox_y2;
-} semantic_det_raw_t;
-```
-
-```c
-typedef struct
-{
-    uint8_t class_id;
-    float confidence;
-
-    float bbox_x1;
-    float bbox_y1;
-    float bbox_x2;
-    float bbox_y2;
-
-    uint8_t instance_index;
-    uint8_t graspable;
-    uint8_t need_grasp_model;
-    uint8_t grasp_template_id;
-} semantic_object_t;
-```
-
-## Model B Interface Draft
-
-```c
-typedef struct
-{
-    float quality;
-
-    float center_u_roi;
-    float center_v_roi;
-    float angle_img_rad;
-    float width_px_roi;
-
-    float center_u_vga;
-    float center_v_vga;
-    float width_px_vga;
-
-    uint8_t valid;
-} grasp_candidate_img_t;
-```
-
-```c
-typedef struct
-{
-    float x_mm;
-    float y_mm;
-    float grasp_yaw_rad;
-    float grasp_width_mm;
-
-    float quality;
-    uint8_t valid;
-} grasp_candidate_robot_t;
-```
+1. 检测器仓库中的 V2 两尺度 orientation head、训练目标、导出和 gate 实现仍在迁移；bbox-only 候选不满足固件 V2 合同。
+2. `theta_valid=true` 样本的 orientation 误差阈值、mask 统计和失败报告格式。
+3. `320x320` 是否满足 arena/weights/dispatch；若不满足，切换 `256x256` fallback。
+4. PTQ 是否足够；如掉点明显，再评估 QAT。
+5. CM85 C 后处理阈值、候选 cap、NMS 参数、`atan2` 解码与耗时。
+6. 板侧 RUHMI dispatch、Tensor Arena、延迟和内存均以实验记录为准。

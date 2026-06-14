@@ -1,4 +1,4 @@
-"""Assistive grasp detector data infrastructure."""
+"""Assistive grasp detector EthosSafeDet-A infrastructure."""
 
 from __future__ import annotations
 
