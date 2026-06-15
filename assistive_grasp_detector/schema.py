@@ -21,12 +21,13 @@ ETHOSSAFEDET_INPUT_SIZE = 320
 ETHOSSAFEDET_FALLBACK_INPUT_SIZE = 256
 ETHOSSAFEDET_STRIDE = 8
 ETHOSSAFEDET_CLASS_NAMES = (
-    "earbud_A",
-    "phial_A",
-    "bottle_A",
-    "phone_A",
-    "remote_A",
-    "tissue_A",
+    "earbud",
+    "phial",
+    "bottle",
+    "phone",
+    "remote",
+    "tissue",
+    "apple",
 )
 ETHOSSAFEDET_NUM_CLASSES = len(ETHOSSAFEDET_CLASS_NAMES)
 ETHOSSAFEDET_MIN_CALIBRATION_IMAGES = 200
@@ -132,4 +133,4 @@ def validate_ethossafedet_classes(classes: list[ClassInfo]) -> None:
     expected = list(enumerate(ETHOSSAFEDET_CLASS_NAMES))
     actual = [(cls.id, cls.name) for cls in classes]
     if actual != expected:
-        raise ValueError(f"EthosSafeDet-A v1 requires classes {expected}, got {actual}")
+        raise ValueError(f"EthosSafeDet-A object_vocab_v1 requires classes {expected}, got {actual}")

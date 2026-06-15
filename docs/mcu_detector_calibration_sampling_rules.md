@@ -27,7 +27,7 @@ The first gate only enforces count and real-image provenance. When choosing or a
 
 - exposure and brightness,
 - target scale,
-- all 6 classes,
+- all 7 classes,
 - negative/background frames,
 - clutter or strong texture backgrounds.
 

@@ -24,7 +24,7 @@ Date: YYYY-MM-DD
 |---|---|
 | Model | EthosSafeDet-A v1 |
 | Input | batch=1, 320x320 / 256x256 |
-| Classes | earbud_A, phial_A, bottle_A, phone_A, remote_A, tissue_A |
+| Classes | earbud, phial, bottle, phone, remote, tissue |
 | Training manifest |  |
 | Calibration manifest |  |
 | Calibration image count |  |

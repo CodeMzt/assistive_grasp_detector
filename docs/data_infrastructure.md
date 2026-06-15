@@ -47,7 +47,7 @@ export_dataset/
   "objects": [
     {
       "class_id": 0,
-      "class_name": "earbud_A",
+      "class_name": "earbud",
       "bbox_xyxy_vga": [395.0, 137.0, 482.0, 219.0],
       "theta_valid": true,
       "grasp_yaw": 0.42,
@@ -61,12 +61,12 @@ export_dataset/
 V2 类别必须严格等于：
 
 ```text
-0 earbud_A
-1 phial_A
-2 bottle_A
-3 phone_A
-4 remote_A
-5 tissue_A
+0 earbud
+1 phial
+2 bottle
+3 phone
+4 remote
+5 tissue
 ```
 
 ## Commands
@@ -108,3 +108,8 @@ build_ethossafedet_calibration `
 ## Notes
 
 Legacy target-map/ROI indexing remains available as deprecated reference tooling only. It is not part of Model A V2 training, firmware deployment, or final acceptance.
+
+## 2026-06-14 object_vocab_v1 alignment
+
+Detector training and annotation configs now consume `configs/classes/object_vocab_v1.json` and the canonical seven-class order `0 earbud`, `1 phial`, `2 bottle`, `3 phone`, `4 remote`, `5 tissue`, `6 apple`. Existing six-class board exports remain legacy until a retrained seven-class model is exported and accepted by main firmware static golden checks.
+

@@ -174,7 +174,7 @@ def test_formal_chain_report_has_paper_structure_and_blocked_gate(tmp_path: Path
             "split_counts": {"train": 2, "val": 2},
             "class_counts": {"0": 1, "1": 1, "2": 1, "3": 1, "4": 0, "5": 0},
         },
-        "model": {"input_size": 320, "num_classes": 6, "class_names": [], "width": 32, "stride": 8, "parameter_count": 1234},
+        "model": {"input_size": 320, "num_classes": 7, "class_names": [], "width": 32, "stride": 8, "parameter_count": 1234},
         "hyperparameters": {
             "epochs": 1,
             "batch_size": 2,

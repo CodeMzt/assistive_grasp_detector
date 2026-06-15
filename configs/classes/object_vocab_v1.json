@@ -1,0 +1,108 @@
+{
+  "schema_version": "assistive_grasp.object_vocab.v1",
+  "classes": [
+    {
+      "id": 0,
+      "name": "earbud",
+      "aliases": [
+        "earbud_A",
+        "earbud_case_square_A"
+      ],
+      "asr_zh_synonyms": [
+        "耳机",
+        "耳机盒"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "phial",
+      "aliases": [
+        "phial_A",
+        "plastic_medicine_bottle_A",
+        "MED_BOX"
+      ],
+      "asr_zh_synonyms": [
+        "药瓶",
+        "小药瓶"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "bottle",
+      "aliases": [
+        "bottle_A",
+        "BOTTLE"
+      ],
+      "asr_zh_synonyms": [
+        "瓶子",
+        "水瓶"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "phone",
+      "aliases": [
+        "phone_A",
+        "iphone_like_A",
+        "PHONE"
+      ],
+      "asr_zh_synonyms": [
+        "手机"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "remote",
+      "aliases": [
+        "remote_A",
+        "remote_control_A",
+        "REMOTE"
+      ],
+      "asr_zh_synonyms": [
+        "遥控器"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "tissue",
+      "aliases": [
+        "tissue_A",
+        "tissue_pack_A",
+        "soft_tissue_pack_A",
+        "TISSUE"
+      ],
+      "asr_zh_synonyms": [
+        "纸巾",
+        "纸巾包"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "apple",
+      "aliases": [
+        "apple_A"
+      ],
+      "asr_zh_synonyms": [
+        "苹果"
+      ]
+    }
+  ],
+  "deprecated_aliases": [
+    {
+      "alias": "cup",
+      "reason": "legacy_v0_not_in_object_vocab_v1"
+    },
+    {
+      "alias": "cup_A",
+      "reason": "legacy_v0_not_in_object_vocab_v1"
+    },
+    {
+      "alias": "small_cup_A",
+      "reason": "legacy_v0_not_in_object_vocab_v1"
+    },
+    {
+      "alias": "CUP",
+      "reason": "legacy_asr_not_in_object_vocab_v1"
+    }
+  ]
+}

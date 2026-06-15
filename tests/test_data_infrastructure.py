@@ -40,7 +40,7 @@ def test_self_dataset_validation_and_ethossafedet_manifest(tmp_path: Path) -> No
     assert first["schema_version"] == "ethossafedet_manifest_v1"
     assert first["width"] == 640
     assert first["height"] == 480
-    assert first["objects"][0]["class_name"] == "earbud_A"
+    assert first["objects"][0]["class_name"] == "earbud"
     assert first["objects"][0]["bbox_xyxy_vga"] == [240.0, 180.0, 400.0, 300.0]
 
 
@@ -171,7 +171,7 @@ def test_model_b_target_index_validation_still_reference_only(tmp_path: Path) ->
                 "map_size": 4,
                 "instance_id": 1,
                 "class_id": 0,
-                "class_name": "earbud_A",
+                "class_name": "earbud",
             }
         ),
         encoding="utf-8",
@@ -195,8 +195,8 @@ def _make_self_dataset(root: Path) -> Path:
     ann_dir.mkdir(parents=True)
     Image.new("RGB", (640, 480), color=(32, 32, 32)).save(image_dir / "000001.jpg")
     Image.new("RGB", (640, 480), color=(64, 64, 64)).save(image_dir / "000002.jpg")
-    _write_annotation(ann_dir / "000001.json", "images/board_vga/000001.jpg", "train", 0, "earbud_A", [240, 180, 400, 300])
-    _write_annotation(ann_dir / "000002.json", "images/board_vga/000002.jpg", None, 1, "phial_A", [100, 100, 200, 220])
+    _write_annotation(ann_dir / "000001.json", "images/board_vga/000001.jpg", "train", 0, "earbud", [240, 180, 400, 300])
+    _write_annotation(ann_dir / "000002.json", "images/board_vga/000002.jpg", None, 1, "phial", [100, 100, 200, 220])
     return root
 
 
@@ -207,10 +207,10 @@ def _make_train_report_dataset(root: Path) -> Path:
     image_dir.mkdir(parents=True)
     ann_dir.mkdir(parents=True)
     rows = [
-        ("000001", "train", 0, "earbud_A", [240, 180, 400, 300], (32, 32, 32)),
-        ("000002", "train", 1, "phial_A", [100, 100, 220, 240], (64, 64, 64)),
-        ("000003", "val", 2, "bottle_A", [200, 160, 360, 320], (96, 96, 96)),
-        ("000004", "val", 3, "phone_A", [260, 170, 430, 310], (128, 128, 128)),
+        ("000001", "train", 0, "earbud", [240, 180, 400, 300], (32, 32, 32)),
+        ("000002", "train", 1, "phial", [100, 100, 220, 240], (64, 64, 64)),
+        ("000003", "val", 2, "bottle", [200, 160, 360, 320], (96, 96, 96)),
+        ("000004", "val", 3, "phone", [260, 170, 430, 310], (128, 128, 128)),
     ]
     for stem, split, class_id, class_name, bbox, color in rows:
         Image.new("RGB", (640, 480), color=color).save(image_dir / f"{stem}.jpg")
@@ -227,7 +227,7 @@ def _make_export_dataset(root: Path, count: int) -> Path:
         Image.new("RGB", (640, 480), color=(index % 255, 16, 16)).save(root / "images" / "camera_1" / f"{stem}.png")
         if stem == "000003":
             continue
-        class_id = (index - 1) % 6
+        class_id = (index - 1) % 7
         (root / "camera_1" / f"{stem}.txt").write_text(
             f"{class_id} 0.500000 0.500000 0.250000 0.250000\n",
             encoding="utf-8",
@@ -237,7 +237,7 @@ def _make_export_dataset(root: Path, count: int) -> Path:
 
 def _write_ethos_classes(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    names = ["earbud_A", "phial_A", "bottle_A", "phone_A", "remote_A", "tissue_A"]
+    names = ["earbud", "phial", "bottle", "phone", "remote", "tissue", "apple"]
     path.write_text(
         yaml.safe_dump(
             {"classes": [{"id": i, "name": name, "graspable": True, "policy": "grasp_rect"} for i, name in enumerate(names)]},

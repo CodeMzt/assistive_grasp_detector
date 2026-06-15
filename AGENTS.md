@@ -10,10 +10,11 @@
 - 这是辅助抓取视觉与控制项目，当前视觉路线是：
   - 固定外部 RGB 相机，eye-to-hand。
   - VGA 640x480 OV5640 UYVY 原图作为唯一图像坐标母图。
-  - 触发式模型 A 做语义检测/定位。
-  - 触发式模型 B 做 ROI RGB 抓取矩形估计。
+  - 触发式模型 A（EthosSafeDetV2）在整张桌面图上做语义检测、定位和朝向估计。
+  - 不再设独立模型 B/ROI RGB 抓取矩形模型；历史 target-map/ROI 工具只能作为 deprecated reference。
   - 平面标定负责 VGA 像素坐标到机械臂桌面坐标映射。
   - 轨迹规划、RL、力触觉闭环负责接触阶段抓取与安全递送。
+- 固件仓库是系统级合同、安全边界、板端 ABI 和最终验收权威。检测器仓库文档如与固件 `Model A V2 / EthosSafeDetV2` 合同冲突，以固件合同为准并先记录最低冲突点。
 - 不把尚未实测的内容写成事实。所有板端、RUHMI、Tensor Arena、延迟、内存、后处理成本都必须以实验记录为准。
 - 每次实验尽量记录：
   - 日期、硬件、固件/SDK 版本、模型来源。
@@ -57,3 +58,4 @@ Use codegraph for **structural** questions: what calls what, what would break, w
 ### If `.codegraph/` does not exist
 
 Ask the user: "I notice this project doesn't have CodeGraph initialized. Want me to run `codegraph init -i` to build the index?"
+- Consume `configs/classes/object_vocab_v1.json` for detector class ids. The target order is 0 earbud, 1 phial, 2 bottle, 3 phone, 4 remote, 5 tissue, 6 apple; cup aliases are legacy/deprecated.

@@ -11,7 +11,7 @@ Last updated: 2026-06-14
 3. VGA 640x480 原图是视觉系统唯一坐标母图。
 4. 当前系统检测合同为 **Model A V2 / EthosSafeDetV2**，目标平台为 RA8P1 Ethos-U55 + RUHMI。
 5. Model A V2 是触发式 6 类桌面物体检测、定位和朝向估计单模型；不再设独立 Model B/ROI 抓取矩形模型。
-6. V2 类别固定为 `earbud_A`、`phial_A`、`bottle_A`、`phone_A`、`remote_A`、`tissue_A`。
+6. V2 类别固定为 `earbud`、`phial`、`bottle`、`phone`、`remote`、`tissue`。
 7. V2 主输入为静态 `batch=1, 320x320`；如果 full-int8/MERA/内存 gate 失败，才评估同架构 `256x256` fallback。
 8. V2 模型图只允许 Conv2D、DepthwiseConv2D、PointwiseConv2D、Add、ReLU/ReLU6、静态 Reshape/Pad/Pool 类算子。
 9. V2 禁止 SiLU/Swish/Mish/GELU/Attention/SPPF、大量 concat、DFL、Softmax bins、图内 NMS/TopK/ArgMax/Gather/Shape/Range/Meshgrid/dynamic Slice/dynamic Reshape。
@@ -72,3 +72,8 @@ stride 16:
 4. PTQ 是否足够；如掉点明显，再评估 QAT。
 5. CM85 C 后处理阈值、候选 cap、NMS 参数、`atan2` 解码与耗时。
 6. 板侧 RUHMI dispatch、Tensor Arena、延迟和内存均以实验记录为准。
+
+## 2026-06-14 object_vocab_v1 alignment
+
+Detector training and annotation configs now consume `configs/classes/object_vocab_v1.json` and the canonical seven-class order `0 earbud`, `1 phial`, `2 bottle`, `3 phone`, `4 remote`, `5 tissue`, `6 apple`. Existing six-class board exports remain legacy until a retrained seven-class model is exported and accepted by main firmware static golden checks.
+

@@ -1,61 +1,42 @@
-schema_version: assistive_grasp_classes_v0
-status: draft_unfrozen
-source: D:/Project/AssistiveGraspAnnotator/examples/classes.yaml
+schema_version: assistive_grasp.object_vocab.v1
+status: frozen_v1
+source: E:/Documents/e2_studio/workspace/resources/contracts/object_vocab_v1.json
 notes: >
-  Initial class table copied from AssistiveGraspAnnotator. This is a v0 data
-  infrastructure default, not a frozen final product ontology.
+  Canonical object IDs shared with main firmware, ASR, Annotator, and RL.
+  Legacy cup/small_cup_A/CUP aliases are deprecated and must not create target IDs.
 classes:
   - id: 0
-    name: phone_A
+    name: earbud
     graspable: true
     policy: grasp_rect
 
   - id: 1
-    name: remote_A
+    name: phial
     graspable: true
     policy: grasp_rect
 
   - id: 2
-    name: medicine_box_A
+    name: bottle
     graspable: true
-    policy: grasp_rect
+    policy: center_or_grasp_rect
 
   - id: 3
-    name: tissue_box_A
+    name: phone
     graspable: true
     policy: grasp_rect
 
   - id: 4
-    name: cup_A
+    name: remote
     graspable: true
-    policy: center_or_grasp_rect
+    policy: grasp_rect
 
   - id: 5
-    name: bottle_A
+    name: tissue
+    graspable: true
+    policy: grasp_rect
+
+  - id: 6
+    name: apple
     graspable: true
     policy: center_or_grasp_rect
 
-  - id: 6
-    name: cup_other
-    graspable: false
-    policy: report_only
-
-  - id: 7
-    name: phone_other
-    graspable: false
-    policy: report_only
-
-  - id: 8
-    name: bottle_other
-    graspable: false
-    policy: report_only
-
-  - id: 9
-    name: book
-    graspable: false
-    policy: report_only
-
-  - id: 10
-    name: box_other
-    graspable: false
-    policy: report_only

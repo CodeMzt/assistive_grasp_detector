@@ -5,7 +5,7 @@
 ## Current Contract
 
 - 相机与坐标母图：OV5640 VGA 640x480，固定外部 RGB 相机，eye-to-hand。
-- 业务类别：`earbud_A`、`phial_A`、`bottle_A`、`phone_A`、`remote_A`、`tissue_A`。
+- 业务类别：`earbud`、`phial`、`bottle`、`phone`、`remote`、`tissue`。
 - 模型输入：静态 `batch=1`，主线 `320x320`，失败兜底 `256x256`。
 - 模型输出：两尺度 stride 8 与 stride 16；每个尺度分离输出 `cls[6]`、`box[4]`、`orientation[2]`，orientation 为 `sin(2theta), cos(2theta)`。
 - 朝向有效性：只有 `theta_valid=true` 的正样本参与朝向监督和验收；方向不明确或不需要朝向的目标必须显式记录为无效朝向。
@@ -68,3 +68,8 @@ V2 静态 golden 还必须覆盖 orientation 输出存在性、`theta_valid` mas
 - `docs/PROJECT_FACTS.md`: 当前冻结事实与未冻结事项。
 
 真实数据、generated 数据、runs 与模型权重保持在 `.gitignore` 覆盖路径中；实验结论必须以可复现记录和 gate 输出为准。
+
+## 2026-06-14 object_vocab_v1 alignment
+
+Detector training and annotation configs now consume `configs/classes/object_vocab_v1.json` and the canonical seven-class order `0 earbud`, `1 phial`, `2 bottle`, `3 phone`, `4 remote`, `5 tissue`, `6 apple`. Existing six-class board exports remain legacy until a retrained seven-class model is exported and accepted by main firmware static golden checks.
+
