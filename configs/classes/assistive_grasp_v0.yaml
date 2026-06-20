@@ -3,7 +3,7 @@ status: frozen_v1
 source: E:/Documents/e2_studio/workspace/resources/contracts/object_vocab_v1.json
 notes: >
   Canonical object IDs shared with main firmware, ASR, Annotator, and RL.
-  Legacy cup/small_cup_A/CUP aliases are deprecated and must not create target IDs.
+  Legacy non-V1 aliases are deprecated and must not create target IDs.
 classes:
   - id: 0
     name: earbud
