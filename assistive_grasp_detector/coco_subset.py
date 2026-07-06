@@ -99,7 +99,7 @@ def prepare_coco_subset(
         "config": Path(config_path).resolve().as_posix(),
         "split_counts": result.split_counts,
         "label_counts": result.label_counts,
-        "note": "COCO subset for Model A only. Do not use for Model B grasp targets.",
+        "note": "COCO subset for Model A only. Do not use as ROIContourNet mask labels.",
     }
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
     return result

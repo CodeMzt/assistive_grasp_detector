@@ -27,7 +27,6 @@ from assistive_grasp_detector.ethossafedet_manifest import (
 )
 from assistive_grasp_detector.ethossafedet_report import make_formal_chain_report
 from assistive_grasp_detector.ethossafedet_train import train_ethossafedet_a
-from assistive_grasp_detector.model_b_index import index_model_b_targets
 
 
 def validate_self_dataset_main(argv: list[str] | None = None) -> int:
@@ -273,17 +272,6 @@ def make_ethossafedet_report_main(argv: list[str] | None = None) -> int:
         return 1
     _print_result({"ok": True, **result}, as_json=True)
     return 0
-
-
-def index_model_b_targets_main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Index deprecated Model B target maps for reference only.")
-    parser.add_argument("--target-maps", required=True, help="Path to generated/target_maps.")
-    parser.add_argument("--out", required=True, help="Output JSONL manifest path.")
-    parser.add_argument("--json", action="store_true", help="Print machine-readable JSON.")
-    args = parser.parse_args(argv)
-    result = index_model_b_targets(args.target_maps, args.out)
-    _print_result(result.to_dict(), as_json=args.json)
-    return 0 if result.ok else 1
 
 
 def _print_result(data: dict[str, Any], as_json: bool = False) -> None:

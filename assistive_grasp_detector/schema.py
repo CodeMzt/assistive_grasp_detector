@@ -14,7 +14,6 @@ VGA_HEIGHT = 480
 EXPECTED_VGA_SIZE = (VGA_WIDTH, VGA_HEIGHT)
 ALLOWED_SPLITS = {"train", "val", "test"}
 ALLOWED_DIFFICULTIES = {"easy", "medium", "hard", "invalid"}
-TARGET_MAP_KEYS = ("q_map", "sin2theta_map", "cos2theta_map", "width_map")
 ETHOSSAFEDET_SCHEMA_VERSION = "ethossafedet_manifest_v1"
 ETHOSSAFEDET_MODEL_ID = "EthosSafeDet-A"
 ETHOSSAFEDET_INPUT_SIZE = 320
@@ -43,7 +42,7 @@ class ClassInfo:
     id: int
     name: str
     graspable: bool = True
-    policy: str = "grasp_rect"
+    policy: str = "bbox"
 
 
 @dataclass(frozen=True)
@@ -108,7 +107,7 @@ def load_classes(path: str | Path) -> list[ClassInfo]:
                 id=class_id,
                 name=name,
                 graspable=bool(item.get("graspable", True)),
-                policy=str(item.get("policy", "grasp_rect")),
+                policy=str(item.get("policy", "bbox")),
             )
         )
     return sorted(classes, key=lambda cls: cls.id)

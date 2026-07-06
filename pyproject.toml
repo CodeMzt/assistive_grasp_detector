@@ -24,7 +24,6 @@ include = ["assistive_grasp_detector*"]
 
 [project.scripts]
 validate_self_dataset = "assistive_grasp_detector.cli:validate_self_dataset_main"
-index_model_b_targets = "assistive_grasp_detector.cli:index_model_b_targets_main"
 prepare_ethossafedet_manifest = "assistive_grasp_detector.cli:prepare_ethossafedet_manifest_main"
 build_ethossafedet_calibration = "assistive_grasp_detector.cli:build_ethossafedet_calibration_main"
 train_ethossafedet_a = "assistive_grasp_detector.cli:train_ethossafedet_a_main"
@@ -38,6 +37,11 @@ inspect_ruhmi_dispatch = "assistive_grasp_detector.cli:inspect_ruhmi_dispatch_ma
 check_memory_budget = "assistive_grasp_detector.cli:check_memory_budget_main"
 make_static_golden = "assistive_grasp_detector.cli:make_static_golden_main"
 make_ethossafedet_report = "assistive_grasp_detector.cli:make_ethossafedet_report_main"
+prepare_ethossafedet_v2_manifest = "assistive_grasp_detector.ethossafedet_v2_manifest:main"
+train_ethossafedet_v2 = "assistive_grasp_detector.ethossafedet_v2_train:main"
+export_ethossafedet_v2_onnx = "assistive_grasp_detector.ethossafedet_v2_export:main"
+check_ethossafedet_v2_gates = "assistive_grasp_detector.ethossafedet_v2_gates:main"
+make_ethossafedet_v2_report = "assistive_grasp_detector.ethossafedet_v2_report:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

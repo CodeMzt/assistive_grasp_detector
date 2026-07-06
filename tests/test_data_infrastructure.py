@@ -17,7 +17,6 @@ from assistive_grasp_detector.ethossafedet_manifest import (
 )
 from assistive_grasp_detector.ethossafedet_export import export_onnx_reference
 from assistive_grasp_detector.ethossafedet_train import assign_targets, train_ethossafedet_a
-from assistive_grasp_detector.model_b_index import index_model_b_targets
 
 
 def test_self_dataset_validation_and_ethossafedet_manifest(tmp_path: Path) -> None:
@@ -148,45 +147,6 @@ def test_train_report_outputs_json_csv_markdown_and_best_checkpoint(tmp_path: Pa
     assert Path(exported["onnx"]).is_file()
 
 
-def test_model_b_target_index_validation_still_reference_only(tmp_path: Path) -> None:
-    root = tmp_path / "target_maps"
-    item_dir = root / "000001"
-    item_dir.mkdir(parents=True)
-    q_map = np.zeros((4, 4), dtype=np.float32)
-    q_map[1, 1] = 1.0
-    np.savez_compressed(
-        item_dir / "obj_001.npz",
-        q_map=q_map,
-        sin2theta_map=np.zeros((4, 4), dtype=np.float32),
-        cos2theta_map=np.ones((4, 4), dtype=np.float32),
-        width_map=np.full((4, 4), 0.25, dtype=np.float32),
-    )
-    Image.new("RGB", (4, 4)).save(item_dir / "obj_001.png")
-    (item_dir / "obj_001.json").write_text(
-        json.dumps(
-            {
-                "source_image": "images/board_vga/000001.jpg",
-                "source_bbox": [1, 2, 3, 4],
-                "padded_bbox": [0, 1, 4, 5],
-                "map_size": 4,
-                "instance_id": 1,
-                "class_id": 0,
-                "class_name": "earbud",
-            }
-        ),
-        encoding="utf-8",
-    )
-
-    out = tmp_path / "model_b_reference.jsonl"
-    result = index_model_b_targets(root, out)
-
-    assert result.ok
-    assert result.record_count == 1
-    record = json.loads(out.read_text(encoding="utf-8").strip())
-    assert record["target_npz"] == "000001/obj_001.npz"
-    assert record["positive_pixels"] == 1
-
-
 def _make_self_dataset(root: Path) -> Path:
     _write_ethos_classes(root / "classes.yaml")
     image_dir = root / "images" / "board_vga"
@@ -240,7 +200,7 @@ def _write_ethos_classes(path: Path) -> None:
     names = ["earbud", "phial", "bottle", "phone", "remote", "tissue", "apple"]
     path.write_text(
         yaml.safe_dump(
-            {"classes": [{"id": i, "name": name, "graspable": True, "policy": "grasp_rect"} for i, name in enumerate(names)]},
+            {"classes": [{"id": i, "name": name, "graspable": True, "policy": "bbox"} for i, name in enumerate(names)]},
             sort_keys=False,
         ),
         encoding="utf-8",
@@ -269,7 +229,7 @@ def _write_annotation(
                 "class_name": class_name,
                 "bbox_xyxy": bbox,
                 "graspable": True,
-                "policy": "grasp_rect",
+                "policy": "bbox",
                 "grasps": [],
             }
         ],

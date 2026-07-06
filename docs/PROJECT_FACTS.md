@@ -10,8 +10,8 @@ Last updated: 2026-06-14
 2. 当前相机输入基准为 OV5640 VGA 640x480 YUV422，按 UYVY 解释。
 3. VGA 640x480 原图是视觉系统唯一坐标母图。
 4. 当前系统检测合同为 **Model A V2 / EthosSafeDetV2**，目标平台为 RA8P1 Ethos-U55 + RUHMI。
-5. Model A V2 是触发式 6 类桌面物体检测、定位和朝向估计单模型；不再设独立 Model B/ROI 抓取矩形模型。
-6. V2 类别固定为 `earbud`、`phial`、`bottle`、`phone`、`remote`、`tissue`。
+5. Model A V2 是触发式 7 类桌面物体检测、定位和朝向估计单模型；旧 ROI 抓取矩形模型已退役；新的 ROIContourNet 轮廓模型由平行仓库 `assistive_grasp_contour_model` 训练。
+6. V2 类别固定为 `earbud`、`phial`、`bottle`、`phone`、`remote`、`tissue`、`apple`。
 7. V2 主输入为静态 `batch=1, 320x320`；如果 full-int8/MERA/内存 gate 失败，才评估同架构 `256x256` fallback。
 8. V2 模型图只允许 Conv2D、DepthwiseConv2D、PointwiseConv2D、Add、ReLU/ReLU6、静态 Reshape/Pad/Pool 类算子。
 9. V2 禁止 SiLU/Swish/Mish/GELU/Attention/SPPF、大量 concat、DFL、Softmax bins、图内 NMS/TopK/ArgMax/Gather/Shape/Range/Meshgrid/dynamic Slice/dynamic Reshape。

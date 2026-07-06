@@ -155,7 +155,7 @@ def _format_formal_report(
         "",
         "### 2.2 非目标",
         "",
-        "- 不恢复独立 Model B/ROI 抓取矩形模型；orientation 属于单个 Model A V2 输出合同。",
+        "- 不恢复旧 ROI 抓取矩形模型；orientation 属于单个 Model A V2 输出合同，轮廓模型由平行仓库单独训练。",
         "- 不导出 obj 分支；置信度由 CPU 侧 `sigmoid(cls_logits)` 得出。",
         "- 不在图内执行 sigmoid、exp、grid decode、atan2、NMS、TopK、ArgMax、Gather 或动态 shape 逻辑。",
         "",

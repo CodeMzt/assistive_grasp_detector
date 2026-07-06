@@ -8,35 +8,28 @@ classes:
   - id: 0
     name: earbud
     graspable: true
-    policy: grasp_rect
 
   - id: 1
     name: phial
     graspable: true
-    policy: grasp_rect
 
   - id: 2
     name: bottle
     graspable: true
-    policy: center_or_grasp_rect
 
   - id: 3
     name: phone
     graspable: true
-    policy: grasp_rect
 
   - id: 4
     name: remote
     graspable: true
-    policy: grasp_rect
 
   - id: 5
     name: tissue
     graspable: true
-    policy: grasp_rect
 
   - id: 6
     name: apple
     graspable: true
-    policy: center_or_grasp_rect
 

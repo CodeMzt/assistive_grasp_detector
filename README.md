@@ -1,13 +1,13 @@
 # Assistive Grasp Detector
 
-本仓库当前系统合同与固件仓库对齐为 **Model A V2 / EthosSafeDetV2**：面向 RA8P1 Ethos-U55 + RUHMI 的单模型 6 类桌面物体检测、定位和朝向估计。历史 bbox-only EthosSafeDet-A v1 产物和独立 Model B/ROI 抓取矩形方案只能作为 legacy reference，不能作为当前固件接收合同。
+本仓库当前系统合同与固件仓库对齐为 **Model A V2 / EthosSafeDetV2**：面向 RA8P1 Ethos-U55 + RUHMI 的单模型 7 类桌面物体检测、定位和朝向估计。历史 bbox-only EthosSafeDet-A v1 产物和旧 ROI 抓取矩形方案已退役，不能作为当前固件接收合同；新的轮廓训练在平行仓库 `assistive_grasp_contour_model` 中进行。
 
 ## Current Contract
 
 - 相机与坐标母图：OV5640 VGA 640x480，固定外部 RGB 相机，eye-to-hand。
-- 业务类别：`earbud`、`phial`、`bottle`、`phone`、`remote`、`tissue`。
+- 业务类别：`earbud`、`phial`、`bottle`、`phone`、`remote`、`tissue`、`apple`。
 - 模型输入：静态 `batch=1`，主线 `320x320`，失败兜底 `256x256`。
-- 模型输出：两尺度 stride 8 与 stride 16；每个尺度分离输出 `cls[6]`、`box[4]`、`orientation[2]`，orientation 为 `sin(2theta), cos(2theta)`。
+- 模型输出：两尺度 stride 8 与 stride 16；每个尺度分离输出 `cls[7]`、`box[4]`、`orientation[2]`，orientation 为 `sin(2theta), cos(2theta)`。
 - 朝向有效性：只有 `theta_valid=true` 的正样本参与朝向监督和验收；方向不明确或不需要朝向的目标必须显式记录为无效朝向。
 - 图内非目标：不导出 `obj`，不做图内 sigmoid/exp/grid decode/NMS/TopK/ArgMax/Gather/dynamic shape。
 - 部署产物：TFLite full-int8 优先；ONNX 只作为 PC reference。
