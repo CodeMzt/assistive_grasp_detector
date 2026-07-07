@@ -122,9 +122,10 @@ After training and ONNX static gates, generate the paper-style report:
 
 The report writes `formal_report.md` plus `formal_report_assets/*.png` and
 `*.csv` files under the run directory. The completed formal report contains
-10 PNG figures plus CSV tables for split distribution, class distribution,
-theta coverage, class weights, epoch history, per-class validation/test
-metrics, gate status, and artifact provenance.
+12 PNG figures, including validation qualitative success and hard-case panels,
+plus CSV tables for split distribution, class distribution, theta coverage,
+class weights, epoch history, qualitative validation examples, per-class
+validation/test metrics, gate status, and artifact provenance.
 
 ## Acceptance Boundary
 
