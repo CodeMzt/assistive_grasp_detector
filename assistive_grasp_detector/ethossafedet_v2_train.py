@@ -455,6 +455,10 @@ def evaluate_v2_model(
     primary_class_matches = 0
     primary_ious: list[float] = []
     theta_errors: list[float] = []
+    negative_image_count = 0
+    negative_image_false_positive_count = 0
+    negative_detection_count = 0
+    negative_scores_by_class: dict[str, list[float]] = {name: [] for name in ETHOSSAFEDET_CLASS_NAMES}
     per_class: dict[str, dict[str, Any]] = {
         name: {"gt": 0, "recall50": 0, "best_iou_sum": 0.0, "theta_count": 0, "theta_abs_error_sum": 0.0}
         for name in ETHOSSAFEDET_CLASS_NAMES
@@ -480,6 +484,15 @@ def evaluate_v2_model(
                 objects = [obj for obj in record.get("objects", []) if not record.get("negative")]
                 total_gt += len(objects)
                 count += 1
+                if not objects:
+                    negative_image_count += 1
+                    if detections:
+                        negative_image_false_positive_count += 1
+                    negative_detection_count += len(detections)
+                    for detection in detections:
+                        class_id = int(detection["class_id"])
+                        if 0 <= class_id < len(ETHOSSAFEDET_CLASS_NAMES):
+                            negative_scores_by_class[ETHOSSAFEDET_CLASS_NAMES[class_id]].append(float(detection["score"]))
                 primary = _primary_object(objects)
                 if primary is not None:
                     primary_count += 1
@@ -530,6 +543,20 @@ def evaluate_v2_model(
         "theta_abs_error_rad_mean": float(np.mean(theta_errors)) if theta_errors else None,
         "theta_eval_count": len(theta_errors),
         "per_class": per_class_out,
+        "negative_image_count": negative_image_count,
+        "negative_image_false_positive_count": negative_image_false_positive_count,
+        "negative_image_false_positive_rate": (
+            float(negative_image_false_positive_count) / float(negative_image_count) if negative_image_count else None
+        ),
+        "negative_detection_count": negative_detection_count,
+        "negative_per_class": {
+            name: {
+                "prediction_count": len(scores),
+                "score_mean": float(np.mean(scores)) if scores else None,
+                "score_max": float(np.max(scores)) if scores else None,
+            }
+            for name, scores in negative_scores_by_class.items()
+        },
     }
 
 
@@ -783,7 +810,11 @@ def _class_and_sampler_weights(records: list[dict[str, Any]]) -> tuple[np.ndarra
     sampler_weights: list[float] = []
     for record in records:
         class_ids = {int(obj["class_id"]) for obj in record.get("objects", [])}
-        sampler_weights.append(float(max([class_weights[class_id] for class_id in class_ids], default=1.0)))
+        class_weight = float(max([class_weights[class_id] for class_id in class_ids], default=1.0))
+        scene_multiplier = float(record.get("sampler_multiplier", 1.0))
+        if not math.isfinite(scene_multiplier) or scene_multiplier <= 0.0:
+            raise ValueError(f"invalid sampler_multiplier {scene_multiplier!r}")
+        sampler_weights.append(min(3.0, class_weight * scene_multiplier))
     return class_weights.astype(np.float32), np.asarray(sampler_weights, dtype=np.float64)
 
 
@@ -934,6 +965,11 @@ def _empty_eval_metrics() -> dict[str, Any]:
         "theta_abs_error_rad_mean": None,
         "theta_eval_count": 0,
         "per_class": {},
+        "negative_image_count": 0,
+        "negative_image_false_positive_count": 0,
+        "negative_image_false_positive_rate": None,
+        "negative_detection_count": 0,
+        "negative_per_class": {},
     }
 
 

@@ -133,3 +133,49 @@ This workflow can produce a host-side formal training candidate and ONNX static
 gate evidence. It does not prove TFLite full-int8, host MERA, RUHMI dispatch, or
 board static golden. Those remain separate acceptance gates before firmware
 consumes the candidate.
+
+## R3 Real-Scene Retraining
+
+R3 keeps the completed R2 manifest membership frozen and adds a separate,
+terminal real-scene holdout. It records the current tissue variant under the
+existing `tissue` class, gives new real captures containing `phial`, `bottle`,
+or `phone` a bounded `1.5x` sampler multiplier, and gives six training
+empty-table images a `2.0x` multiplier. The combined sampler weight remains
+capped at `3.0`; apple and earbud are never downsampled.
+
+The R3 policy owns the nine empty-table frames `camera_1/003347` through
+`003355`, excludes `004056`, `004057`, `004138`, and `004170`, and uses the
+new real-capture range `003870..004545`. Existing R2 train/validation/test
+membership is copied exactly. New real captures use a deterministic `80/10/10`
+train/validation/real-scene-holdout allocation; the holdout is evaluated only
+after the validation-selected checkpoint has been fixed.
+
+```powershell
+$env:PYTHONPATH='D:\Project\assistive_grasp_detector'
+$run = 'D:\Project\assistive_grasp_detector\runs\model_a_v2_w40_320_20260715_realdata_r3'
+$r2Manifest = 'D:\Project\assistive_grasp_detector\runs\model_a_v2_w40_320_20260706_formal_r2\manifest\ethossafedet_v2_manifest.jsonl'
+
+& 'D:\Anaconda3\envs\env_isaaclab\python.exe' -m assistive_grasp_detector.ethossafedet_v2_r3 prepare `
+  --dataset 'D:\AssistiveGraspAnnotatorData\datasets\new_dataset' `
+  --r2-manifest $r2Manifest `
+  --out "$run\manifest\ethossafedet_v2_r3_manifest.jsonl" `
+  --write-empty-annotations
+
+& 'D:\Anaconda3\envs\env_isaaclab\python.exe' -m assistive_grasp_detector.ethossafedet_v2_train `
+  --manifest "$run\manifest\ethossafedet_v2_r3_manifest.jsonl" `
+  --out $run `
+  --input-size 320 --width 40 --epochs 120 --batch 24 --lr 0.0003 `
+  --weight-decay 0.0001 --device cuda --seed 0 --eval-every 1 --num-workers 0 --amp
+
+& 'D:\Anaconda3\envs\env_isaaclab\python.exe' -m assistive_grasp_detector.ethossafedet_v2_r3 evaluate `
+  --run $run `
+  --r2-run 'D:\Project\assistive_grasp_detector\runs\model_a_v2_w40_320_20260706_formal_r2'
+
+# Run the unchanged ONNX export and static gates, then extend the paper-style report.
+& 'D:\Anaconda3\envs\env_isaaclab\python.exe' -m assistive_grasp_detector.ethossafedet_v2_r3 report --run $run
+```
+
+The R3 report preserves the R2 frozen-test comparison, adds real-scene and
+empty-table terminal metrics at the fixed `0.25` score threshold, and renders
+real-scene plus empty-table qualitative panels. This is still a host-side
+candidate report, not board acceptance evidence.
