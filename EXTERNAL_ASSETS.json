@@ -1,0 +1,17 @@
+{
+  "schema_version": "assistive_grasp.external_asset_pointer.v1",
+  "repository": "CodeMzt/assistive_grasp_detector",
+  "source_commit": "460a94b50685bb5ffd2cdf3de8cd37e3049274f1",
+  "domain_prefix": "detector",
+  "status": "formal_model_a_lineage_and_host_candidates",
+  "motion_authority": false,
+  "canonical_assets": {
+    "data_manifest": "D:/AssistiveGraspData/vision-training/cross-model/20260801-closeout/MANIFEST.json",
+    "data_manifest_sha256": "9DB55F9025557D6CC45270D732E8CD87141A504F598E8BCC1004169EB6F507A5",
+    "model_manifest": "D:/AssistiveGraspModels/vision-models/20260801-closeout/MANIFEST.json",
+    "model_manifest_sha256": "865517560B88F58D7AAA94020F67B685E661FDF847D0706FE568A8E58C815401",
+    "evidence_manifest": "D:/AssistiveGraspEvidence/vision-models/20260801-closeout/MANIFEST.json",
+    "evidence_manifest_sha256": "DB3BCEE2353596DE16D0B06AAA0FF4BAB270613F2A7F4EDAC139F0588272C3E8"
+  },
+  "migration_receipt_sha256": "4A337D3843CC368E752BCAF3370795E2C0915D89956B9C722A941ED3F0224229"
+}
